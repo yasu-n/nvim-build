@@ -38,8 +38,8 @@ print_tagname() {
         cat "$NVIM_BUILD_ROOT"/tags | awk '{ print $2 }' | sort
     else
         echo "available version info"
-        git ls-remote -t https://github.com/neovim/neovim.git | awk '{ print $2 }' \
-            | awk -F/ '{ print $NF }' | sort
+        git ls-remote -t https://github.com/neovim/neovim | awk '{ print $2 }' \
+            | awk -F/ '{ print $NF }' | sort | grep -v {}
     fi
     exit 0
 }
@@ -72,7 +72,7 @@ exist_directory() {
 download_latest() {
     NVIM_VERSION="latest"
     exist_directory
-    git clone https://github.com/neovim/neovim.git "$NVIM_SOURCE"
+    git clone https://github.com/neovim/neovim "$NVIM_SOURCE"
     cd "$NVIM_SOURCE"
 }
 
@@ -94,7 +94,8 @@ extract_archive() {
 
 # configure
 configure() {
-    ./configure --prefix="$NVIMENV_ROOT"/versions/"$NVIM_VERSION" $BUILD_OPTIONS
+    PREFIX_FLAGS="-DCMAKE_INSTALL_PREFIX="
+    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_EXTRA_FLAGS="$PREFIX_FLAGS""$NVIMENV_ROOT"/versions/"$NVIM_VERSION" $BUILD_OPTIONS
 }
 
 # remove source directory
@@ -152,7 +153,4 @@ trap clean EXIT
 
 ### configure, make, make install
 cd "$NVIM_SOURCE"
-#configure && make -f "$NVIM_SOURCE"/Makefile && make install && clean
-#make CMAKE_BUILD_TYPE=RelWithDebInfo && make install && clean
-make CMAKE_BUILD_TYPE=RelWithDebInfo 
-
+configure && make install && clean

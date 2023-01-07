@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+[ -n "$NVIMENV_DEBUG" ] && set -x
+
+if [ ! -d "$NVIMENV_ROOT"/versions ]; then
+  mkdir "$NVIMENV_ROOT"/versions
+fi
+
+NVIM_VERSION="$1"
+if [ ! -e "$NVIMENV_ROOT"/versions/"$NVIM_VERSION" ]; then
+  echo "No such as directory."
+  exit 1
+fi
+
+
+if [ -e "$NVIMENV_ROOT"/versions/"$NVIM_VERSION" ]; then
+  rm -rf "$NVIMENV_ROOT"/versions/"$NVIM_VERSION"
+fi

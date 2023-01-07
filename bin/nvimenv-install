@@ -1,0 +1,158 @@
+#!/bin/sh
+# debug
+set -e
+[ -n "$NVIMENV_DEBUG" ] && set -x
+
+# make file if directory is not exist
+if [ ! -d "$NVIMENV_ROOT"/versions ]; then
+    mkdir "$NVIMENV_ROOT"/versions
+fi
+
+# create download directory
+NVIM_SOURCE="$NVIMENV_ROOT"/src
+if [ -e "$NVIM_SOURCE" ]; then
+    rm -rf "$NVIM_SOURCE"
+fi
+mkdir "$NVIM_SOURCE"
+
+
+### function
+unset NVIM_ARCHIVE
+unset NVIM_VERSION
+unset TAG_NAME
+unset BUILD_OPTIONS
+NVIM_BUILD_ROOT="$NVIMENV_ROOT"/plugins/nvim-build
+# usage
+usage() {
+    echo "Usage: "
+    echo "  nvimenv install -l"
+    echo "  nvimenv install -f <SOURCE>.tar.gz [-- <BUILD_OPTIONS>]"
+    echo "  nvimenv install -t <TAG_NAME> [-- <BUILD_OPTIONS>]"
+    echo "  nvimenv install -n [-- <BUILD_OPTIONS>]"
+    exit 0
+}
+
+# list tag name
+print_tagname() {
+    if [ -e "$NVIM_BUILD_ROOT"/tags ]; then
+        cat "$NVIM_BUILD_ROOT"/tags | awk '{ print $2 }' | sort
+    else
+        echo "available version info"
+        git ls-remote -t https://github.com/neovim/neovim.git | awk '{ print $2 }' \
+            | awk -F/ '{ print $NF }' | sort
+    fi
+    exit 0
+}
+
+# check directory exist
+exist_directory() {
+    if [ -e "$NVIMENV_ROOT"/versions/"$NVIM_VERSION" ]; then
+        echo "This directory already exists: $NVIM_VERSION"
+        while /usr/bin/true
+        do
+            echo "Do you delete directory?[yN]"
+            read ans
+    
+            case ${ans} in
+                [Yy]|[Yy][Ee][Ss])
+                    rm -rf "$NVIMENV_ROOT"/versions/"$NVIM_VERSION"
+                    break
+                    ;;
+                [Nn]|[Nn][Oo])
+                    exit 0
+                    ;;
+                *)
+                    ;;
+            esac
+        done
+    fi
+}
+
+# download latest version
+download_latest() {
+    NVIM_VERSION="latest"
+    exist_directory
+    git clone https://github.com/neovim/neovim.git "$NVIM_SOURCE"
+    cd "$NVIM_SOURCE"
+}
+
+# download tagname version
+download_tagname() {
+    NVIM_VERSION="$TAG_NAME"
+    exist_directory
+    git clone https://github.com/neovim/neovim.git -b "$TAG_NAME" "$NVIM_SOURCE"
+}
+
+# extract archive 
+extract_archive() {
+    NVIM_VERSION="nvim"
+    exist_directory
+    tar xvf "$NVIM_ARCHIVE" -C "$NVIM_SOURCE"
+    cd $(find "$NVIM_SOURCE" -mindepth 1 -maxdepth 1 -type d | sed 1q)
+    cp -Rp ./ "$NVIM_SOURCE"
+}
+
+# configure
+configure() {
+    ./configure --prefix="$NVIMENV_ROOT"/versions/"$NVIM_VERSION" $BUILD_OPTIONS
+}
+
+# remove source directory
+clean() {
+    if [ -e "$NVIM_SOURCE" ]; then
+        rm -rf "$NVIM_SOURCE"
+    fi
+}
+
+
+### set options
+while getopts ":f:t:nl" OPT
+do
+    case $OPT in
+        f)
+            NVIM_ARCHIVE="$OPTARG"
+            if [ ! -n "$NVIM_ARCHIVE" ];then
+                usage
+            fi
+            extract_archive
+            ;;
+        t)
+            TAG_NAME="$OPTARG"
+            if [ ! -n "$TAG_NAME" ]; then
+                usage
+            fi
+            download_tagname
+            ;;
+        n)
+            download_latest
+            ;;
+        l)
+            print_tagname
+            ;;
+        :)
+            echo "${0}: option requires an -$OPTARG"
+            usage
+            ;;
+        \?)
+            echo "${0}: illegal option -$OPTARG"
+            usage
+            ;;
+    esac
+done
+
+
+### delete options
+shift `expr $OPTIND - 1`
+
+### set argument
+BUILD_OPTIONS="$@"
+
+### exit trap
+trap clean EXIT
+
+### configure, make, make install
+cd "$NVIM_SOURCE"
+#configure && make -f "$NVIM_SOURCE"/Makefile && make install && clean
+#make CMAKE_BUILD_TYPE=RelWithDebInfo && make install && clean
+make CMAKE_BUILD_TYPE=RelWithDebInfo 
+

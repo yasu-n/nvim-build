@@ -95,7 +95,7 @@ extract_archive() {
 # configure
 configure() {
     PREFIX_FLAGS="-DCMAKE_INSTALL_PREFIX="
-    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_EXTRA_FLAGS="$PREFIX_FLAGS""$NVIMENV_ROOT"/versions/"$NVIM_VERSION" $BUILD_OPTIONS
+    make CMAKE_BUILD_TYPE=Release CMAKE_EXTRA_FLAGS="$PREFIX_FLAGS""$NVIMENV_ROOT"/versions/"$NVIM_VERSION" $BUILD_OPTIONS
 }
 
 # remove source directory
